@@ -11,6 +11,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
 var database = firebase.database();
+var statusPassword = "1234";
+var statusAuthStorageKey = "statusOnlineUnlocked";
+var historyCacheStorageKey = "statusOnlineHistoryCache";
 var historyRefs = [
   {
     key: "timeline",
@@ -28,6 +31,47 @@ var historyRefs = [
   }
 ];
 var historyBySystem = {};
+var isUnlocked = localStorage.getItem(statusAuthStorageKey) === "true";
+var isShowingCachedHistory = false;
+
+function loadHistoryCache() {
+  try {
+    var cachedHistory = JSON.parse(localStorage.getItem(historyCacheStorageKey));
+
+    if (cachedHistory && cachedHistory.historyBySystem) {
+      historyBySystem = cachedHistory.historyBySystem;
+      isShowingCachedHistory = true;
+    }
+  } catch (error) {
+    localStorage.removeItem(historyCacheStorageKey);
+  }
+}
+
+function saveHistoryCache() {
+  localStorage.setItem(historyCacheStorageKey, JSON.stringify({
+    cachedAt: Date.now(),
+    historyBySystem: historyBySystem
+  }));
+}
+
+loadHistoryCache();
+
+function showStatusPage() {
+  isUnlocked = true;
+  localStorage.setItem(statusAuthStorageKey, "true");
+  document.getElementById("loginPage").classList.add("hidden");
+  document.getElementById("statusPage").classList.remove("hidden");
+  renderHistory();
+}
+
+function showLoginPage() {
+  isUnlocked = false;
+  localStorage.removeItem(statusAuthStorageKey);
+  document.getElementById("statusPage").classList.add("hidden");
+  document.getElementById("loginPage").classList.remove("hidden");
+  document.getElementById("passwordInput").value = "";
+  document.getElementById("passwordInput").focus();
+}
 
 function normalizeRecord(system, key, data) {
   return {
@@ -101,6 +145,10 @@ function renderTable(historyRef, records) {
 }
 
 function renderHistory() {
+  if (!isUnlocked) {
+    return;
+  }
+
   var totalRecords = document.getElementById("totalRecords");
   var onlineRecords = document.getElementById("onlineRecords");
   var lastUpdate = document.getElementById("lastUpdate");
@@ -119,7 +167,7 @@ function renderHistory() {
   lastUpdate.textContent = new Date().toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit"
-  });
+  }) + (isShowingCachedHistory ? " (cache)" : "");
 
   historyRefs.forEach(function(historyRef) {
     var systemRecords = historyBySystem[historyRef.key] || [];
@@ -139,6 +187,33 @@ historyRefs.forEach(function(historyRef) {
     });
 
     historyBySystem[historyRef.key] = records;
+    isShowingCachedHistory = false;
+    saveHistoryCache();
     renderHistory();
   });
 });
+
+document.getElementById("passwordForm").addEventListener("submit", function(event) {
+  event.preventDefault();
+
+  var passwordInput = document.getElementById("passwordInput");
+  var loginError = document.getElementById("loginError");
+
+  if (passwordInput.value === statusPassword) {
+    loginError.textContent = "";
+    showStatusPage();
+    return;
+  }
+
+  loginError.textContent = "Senha incorreta.";
+  passwordInput.value = "";
+  passwordInput.focus();
+});
+
+document.getElementById("logoutButton").addEventListener("click", function() {
+  showLoginPage();
+});
+
+if (isUnlocked) {
+  showStatusPage();
+}
