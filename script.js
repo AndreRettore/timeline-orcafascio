@@ -19,27 +19,43 @@ var timelineRef = database.ref("timeline");
 var timelineHistoryRef = database.ref("timeline_historico");
 var timelineSessionStorageKey = "timelineSessionId";
 
+function closeOpenHistoryRecords(historyRef, timestamp, status, callback) {
+  historyRef.orderByChild("status").equalTo("online").once("value", function(snapshot) {
+    snapshot.forEach(function(childSnapshot) {
+      childSnapshot.ref.update({
+        exitTimestamp: timestamp,
+        exitTimestampMs: firebase.database.ServerValue.TIMESTAMP,
+        status: status
+      });
+    });
+
+    callback();
+  });
+}
+
 // Função para registrar a entrada do usuário
 function registerEntry(name) {
   var timestamp = new Date().toLocaleString();
   var historyEntry = timelineHistoryRef.push();
 
-  timelineRef.set({
-    name: name,
-    timestamp: timestamp,
-    historyId: historyEntry.key
-  });
+  closeOpenHistoryRecords(timelineHistoryRef, timestamp, "replaced", function() {
+    timelineRef.set({
+      name: name,
+      timestamp: timestamp,
+      historyId: historyEntry.key
+    });
 
-  historyEntry.set({
-    name: name,
-    entryTimestamp: timestamp,
-    entryTimestampMs: firebase.database.ServerValue.TIMESTAMP,
-    exitTimestamp: "",
-    exitTimestampMs: null,
-    status: "online"
-  });
+    historyEntry.set({
+      name: name,
+      entryTimestamp: timestamp,
+      entryTimestampMs: firebase.database.ServerValue.TIMESTAMP,
+      exitTimestamp: "",
+      exitTimestampMs: null,
+      status: "online"
+    });
 
-  localStorage.setItem(timelineSessionStorageKey, historyEntry.key);
+    localStorage.setItem(timelineSessionStorageKey, historyEntry.key);
+  });
 }
 
 // Função para registrar a saída do usuário
@@ -66,8 +82,10 @@ function exitTimeline() {
       });
     }
 
-    localStorage.removeItem(timelineSessionStorageKey);
-    timelineRef.remove();
+    closeOpenHistoryRecords(timelineHistoryRef, timestamp, "offline", function() {
+      localStorage.removeItem(timelineSessionStorageKey);
+      timelineRef.remove();
+    });
   });
 }
 
@@ -145,22 +163,24 @@ function registerEntry2(name2) {
   var timestamp2 = new Date().toLocaleString();
   var historyEntry2 = timelineHistoryRef2.push();
 
-  timelineRef2.set({
-    name2: name2,
-    timestamp2: timestamp2,
-    historyId: historyEntry2.key
-  });
+  closeOpenHistoryRecords(timelineHistoryRef2, timestamp2, "replaced", function() {
+    timelineRef2.set({
+      name2: name2,
+      timestamp2: timestamp2,
+      historyId: historyEntry2.key
+    });
 
-  historyEntry2.set({
-    name: name2,
-    entryTimestamp: timestamp2,
-    entryTimestampMs: firebase.database.ServerValue.TIMESTAMP,
-    exitTimestamp: "",
-    exitTimestampMs: null,
-    status: "online"
-  });
+    historyEntry2.set({
+      name: name2,
+      entryTimestamp: timestamp2,
+      entryTimestampMs: firebase.database.ServerValue.TIMESTAMP,
+      exitTimestamp: "",
+      exitTimestampMs: null,
+      status: "online"
+    });
 
-  localStorage.setItem(timelineSessionStorageKey2, historyEntry2.key);
+    localStorage.setItem(timelineSessionStorageKey2, historyEntry2.key);
+  });
 }
 
 // Função para registrar a saída do usuário
@@ -187,8 +207,10 @@ function exitTimeline2() {
       });
     }
 
-    localStorage.removeItem(timelineSessionStorageKey2);
-    timelineRef2.remove();
+    closeOpenHistoryRecords(timelineHistoryRef2, timestamp2, "offline", function() {
+      localStorage.removeItem(timelineSessionStorageKey2);
+      timelineRef2.remove();
+    });
   });
 }
 

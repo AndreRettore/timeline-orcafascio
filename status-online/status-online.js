@@ -18,6 +18,7 @@ var historyRefs = [
   {
     key: "timeline",
     system: "Timeline",
+    activeRef: database.ref("timeline"),
     ref: database.ref("timeline_historico"),
     tableBodyId: "timelineTableBody",
     countId: "timelineCount"
@@ -25,12 +26,14 @@ var historyRefs = [
   {
     key: "orcafasio",
     system: "OrçaFascio",
+    activeRef: database.ref("orcafasio"),
     ref: database.ref("orcafasio_historico"),
     tableBodyId: "orcafasioTableBody",
     countId: "orcafasioCount"
   }
 ];
 var historyBySystem = {};
+var activeBySystem = {};
 var isUnlocked = localStorage.getItem(statusAuthStorageKey) === "true";
 var isShowingCachedHistory = false;
 
@@ -89,6 +92,32 @@ function getSortValue(record) {
   return record.entryTimestampMs || 0;
 }
 
+function normalizeOnlineRecords(records, activeHistoryId) {
+  records.sort(function(a, b) {
+    return getSortValue(b) - getSortValue(a);
+  });
+
+  return records.map(function(record, index) {
+    var normalizedRecord = Object.assign({}, record);
+    var newerRecord = index > 0 ? records[index - 1] : null;
+    var isOpenRecord = !normalizedRecord.exitTimestamp && normalizedRecord.status === "online";
+    var wasReplaced = normalizedRecord.status === "replaced" ||
+      (newerRecord && normalizedRecord.exitTimestamp && normalizedRecord.exitTimestamp === newerRecord.entryTimestamp);
+
+    if (isOpenRecord && normalizedRecord.key !== activeHistoryId) {
+      normalizedRecord.exitTimestamp = "Substituído";
+      wasReplaced = true;
+    }
+
+    if (wasReplaced) {
+      normalizedRecord.status = "replaced";
+      normalizedRecord.wasReplaced = true;
+    }
+
+    return normalizedRecord;
+  });
+}
+
 function formatCount(count) {
   return count === 1 ? "1 registro" : count + " registros";
 }
@@ -115,8 +144,13 @@ function createRecordRow(record) {
   nameCell.textContent = record.name || "-";
   entryCell.textContent = record.entryTimestamp || "-";
   exitCell.textContent = record.exitTimestamp || "-";
-  statusBadge.textContent = record.status === "online" ? "Online" : "Offline";
-  statusBadge.className = "status " + (record.status === "online" ? "status-online" : "status-offline");
+  if (record.wasReplaced) {
+    statusBadge.textContent = "Offline/Substituído";
+    statusBadge.className = "status status-replaced";
+  } else {
+    statusBadge.textContent = record.status === "online" ? "Online" : "Offline";
+    statusBadge.className = "status " + (record.status === "online" ? "status-online" : "status-offline");
+  }
 
   statusCell.appendChild(statusBadge);
   row.appendChild(nameCell);
@@ -160,6 +194,16 @@ function renderHistory() {
     return getSortValue(b) - getSortValue(a);
   });
 
+  var recordsBySystem = records.reduce(function(normalizedRecords, record) {
+    var systemRecords = normalizedRecords[record.system] || [];
+    systemRecords.push(record);
+    normalizedRecords[record.system] = systemRecords;
+    return normalizedRecords;
+  }, {});
+  records = historyRefs.reduce(function(allRecords, historyRef) {
+    return allRecords.concat(normalizeOnlineRecords(recordsBySystem[historyRef.system] || [], activeBySystem[historyRef.key]));
+  }, []);
+
   totalRecords.textContent = records.length;
   onlineRecords.textContent = records.filter(function(record) {
     return record.status === "online";
@@ -171,9 +215,7 @@ function renderHistory() {
 
   historyRefs.forEach(function(historyRef) {
     var systemRecords = historyBySystem[historyRef.key] || [];
-    systemRecords.sort(function(a, b) {
-      return getSortValue(b) - getSortValue(a);
-    });
+    systemRecords = normalizeOnlineRecords(systemRecords, activeBySystem[historyRef.key]);
     renderTable(historyRef, systemRecords);
   });
 }
@@ -189,6 +231,12 @@ historyRefs.forEach(function(historyRef) {
     historyBySystem[historyRef.key] = records;
     isShowingCachedHistory = false;
     saveHistoryCache();
+    renderHistory();
+  });
+
+  historyRef.activeRef.on("value", function(snapshot) {
+    var activeData = snapshot.val();
+    activeBySystem[historyRef.key] = activeData && activeData.historyId ? activeData.historyId : null;
     renderHistory();
   });
 });
