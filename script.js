@@ -16,18 +16,59 @@ var database = firebase.app('app1').database();
 
 // Referenciar o nó "timeline" no banco de dados
 var timelineRef = database.ref("timeline");
+var timelineHistoryRef = database.ref("timeline_historico");
+var timelineSessionStorageKey = "timelineSessionId";
 
 // Função para registrar a entrada do usuário
 function registerEntry(name) {
+  var timestamp = new Date().toLocaleString();
+  var historyEntry = timelineHistoryRef.push();
+
   timelineRef.set({
     name: name,
-    timestamp: new Date().toLocaleString()
+    timestamp: timestamp,
+    historyId: historyEntry.key
   });
+
+  historyEntry.set({
+    name: name,
+    entryTimestamp: timestamp,
+    entryTimestampMs: firebase.database.ServerValue.TIMESTAMP,
+    exitTimestamp: "",
+    exitTimestampMs: null,
+    status: "online"
+  });
+
+  localStorage.setItem(timelineSessionStorageKey, historyEntry.key);
 }
 
 // Função para registrar a saída do usuário
 function exitTimeline() {
-  timelineRef.remove();
+  timelineRef.once("value", function(snapshot) {
+    var data = snapshot.val();
+    var timestamp = new Date().toLocaleString();
+    var historyId = data && data.historyId ? data.historyId : localStorage.getItem(timelineSessionStorageKey);
+
+    if (historyId) {
+      timelineHistoryRef.child(historyId).update({
+        exitTimestamp: timestamp,
+        exitTimestampMs: firebase.database.ServerValue.TIMESTAMP,
+        status: "offline"
+      });
+    } else if (data) {
+      timelineHistoryRef.push({
+        name: data.name || "",
+        entryTimestamp: data.timestamp || "",
+        entryTimestampMs: null,
+        exitTimestamp: timestamp,
+        exitTimestampMs: firebase.database.ServerValue.TIMESTAMP,
+        status: "offline"
+      });
+    }
+
+    localStorage.removeItem(timelineSessionStorageKey);
+    timelineRef.remove();
+  });
 }
 
 // Função para verificar o status do Timeline
@@ -96,18 +137,59 @@ var database2 = firebase.app('app2').database();
 
 // Referenciar o nó "timeline" no banco de dados
 var timelineRef2 = database2.ref("orcafasio");
+var timelineHistoryRef2 = database2.ref("orcafasio_historico");
+var timelineSessionStorageKey2 = "orcafasioSessionId";
 
 // Função para registrar a entrada do usuário
 function registerEntry2(name2) {
+  var timestamp2 = new Date().toLocaleString();
+  var historyEntry2 = timelineHistoryRef2.push();
+
   timelineRef2.set({
     name2: name2,
-    timestamp2: new Date().toLocaleString()
+    timestamp2: timestamp2,
+    historyId: historyEntry2.key
   });
+
+  historyEntry2.set({
+    name: name2,
+    entryTimestamp: timestamp2,
+    entryTimestampMs: firebase.database.ServerValue.TIMESTAMP,
+    exitTimestamp: "",
+    exitTimestampMs: null,
+    status: "online"
+  });
+
+  localStorage.setItem(timelineSessionStorageKey2, historyEntry2.key);
 }
 
 // Função para registrar a saída do usuário
 function exitTimeline2() {
-  timelineRef2.remove();
+  timelineRef2.once("value", function(snapshot2) {
+    var data2 = snapshot2.val();
+    var timestamp2 = new Date().toLocaleString();
+    var historyId2 = data2 && data2.historyId ? data2.historyId : localStorage.getItem(timelineSessionStorageKey2);
+
+    if (historyId2) {
+      timelineHistoryRef2.child(historyId2).update({
+        exitTimestamp: timestamp2,
+        exitTimestampMs: firebase.database.ServerValue.TIMESTAMP,
+        status: "offline"
+      });
+    } else if (data2) {
+      timelineHistoryRef2.push({
+        name: data2.name2 || "",
+        entryTimestamp: data2.timestamp2 || "",
+        entryTimestampMs: null,
+        exitTimestamp: timestamp2,
+        exitTimestampMs: firebase.database.ServerValue.TIMESTAMP,
+        status: "offline"
+      });
+    }
+
+    localStorage.removeItem(timelineSessionStorageKey2);
+    timelineRef2.remove();
+  });
 }
 
 // Função para verificar o status do Timeline 2
