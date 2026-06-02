@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status Online - Histórico</title>
+  <meta name="description" content="Histórico de entradas e saídas do Timeline e OrçaFascio.">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon_exxata.svg">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: #0f0f0f;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+    }
+
+    .back-link {
+      color: #ffffff;
+      background: #800020;
+      padding: 10px 16px;
+      border-radius: 4px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .back-link:hover {
+      background: #660015;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .summary-item {
+      background: #000033;
+      border-radius: 4px;
+      padding: 16px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    }
+
+    .summary-item span {
+      display: block;
+      color: #c9c9d6;
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+    }
+
+    .summary-item strong {
+      display: block;
+      font-size: 1.5rem;
+    }
+
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .table-card {
+      width: 100%;
+      background: #000033;
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+
+    .table-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .table-title h2 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .table-title span {
+      color: #c9c9d6;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 520px;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    th {
+      color: #c9c9d6;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    td {
+      color: #ffffff;
+      font-size: 0.95rem;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .status {
+      display: inline-block;
+      min-width: 72px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .status-online {
+      background: #1f7a3a;
+    }
+
+    .status-offline {
+      background: #555555;
+    }
+
+    .empty {
+      padding: 24px;
+      color: #c9c9d6;
+      text-align: center;
+    }
+
+    @media (max-width: 720px) {
+      .header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .summary,
+      .tables-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <h1>Status Online</h1>
+      <a class="back-link" href="../">Voltar</a>
+    </header>
+
+    <section class="summary" aria-label="Resumo do histórico">
+      <div class="summary-item">
+        <span>Total de registros</span>
+        <strong id="totalRecords">0</strong>
+      </div>
+      <div class="summary-item">
+        <span>Online agora</span>
+        <strong id="onlineRecords">0</strong>
+      </div>
+      <div class="summary-item">
+        <span>Última atualização</span>
+        <strong id="lastUpdate">-</strong>
+      </div>
+    </section>
+
+    <section class="tables-grid" aria-label="Histórico de registros online">
+      <article class="table-card">
+        <div class="table-title">
+          <h2>Timeline</h2>
+          <span id="timelineCount">0 registros</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Entrada</th>
+                <th>Saída</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="timelineTableBody">
+              <tr>
+                <td colspan="4" class="empty">Carregando histórico...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="table-card">
+        <div class="table-title">
+          <h2>OrçaFascio</h2>
+          <span id="orcafasioCount">0 registros</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Entrada</th>
+                <th>Saída</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="orcafasioTableBody">
+              <tr>
+                <td colspan="4" class="empty">Carregando histórico...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+  <script src="status-online.js"></script>
+</body>
+</html>
